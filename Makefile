@@ -3,7 +3,7 @@ DYNLIB = $(PROJECT).so
 
 CC = gcc
 
-CFLAGS = -g -Wall -Wextra
+CFLAGS = -g -Wall -Wextra -Iinclude
 
 # dirs
 OUTPUT = build
