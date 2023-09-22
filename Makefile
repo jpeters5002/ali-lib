@@ -54,7 +54,7 @@ $(LIB_INSTALL):
 $(INC_INSTALL):
 	mkdir -p $@
 
-install: $(LIB_INSTALL) $(INC_INSTALL)
+install: $(LIB_INSTALL) $(INC_INSTALL) $(OUTPUT)/$(DYNLIB)
 	$(CP) $(OUTPUT)/$(DYNLIB) $(LIB_INSTALL); \
 	$(CP) $(HEADERS) $(INC_INSTALL)
 
