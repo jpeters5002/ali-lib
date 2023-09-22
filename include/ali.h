@@ -8,8 +8,8 @@ struct ali {
     size_t _len;
 };
 
-void init_ali(struct ali * self);
+void ali_init(struct ali * self);
 
-void deinit_ali(struct ali * self);
+void ali_deinit(struct ali * self);
 
 #endif // ALI_H
