@@ -10,9 +10,13 @@ OUTPUT = build
 OBJ = obj
 SRC = src
 INC = include
+LIB_INSTALL = /usr/local/lib/ali
+INC_INSTALL = /usr/local/include/ali
 
 # commands
 RM = rm -f
+RM_REC = rm -rf
+CP = cp
 
 # files
 SOURCES := $(wildcard $(SRC)/*.c)
@@ -43,3 +47,16 @@ $(OBJ)/%.o: $(SRC)/%.c
 clean:
 	$(RM) $(OBJECTS)
 	$(RM) $(OUTPUT)/$(DYNLIB)
+
+$(LIB_INSTALL):
+	mkdir -p $@
+
+$(INC_INSTALL):
+	mkdir -p $@
+
+install: $(LIB_INSTALL) $(INC_INSTALL) $(OUTPUT)/$(DYNLIB)
+	$(CP) $(OUTPUT)/$(DYNLIB) $(LIB_INSTALL); \
+	$(CP) $(HEADERS) $(INC_INSTALL)
+
+uninstall:
+	$(RM_REC) $(LIB_INSTALL) $(INC_INSTALL)
