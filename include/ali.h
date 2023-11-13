@@ -12,7 +12,7 @@ struct ali {
 };
 
 #define ALI_INIT_LIST() (struct ali) { NULL, 0 }
-inline void ali_init(struct ali *self) { *self = ALI_INIT_LIST(); }
+void ali_init(struct ali *self);
 void ali_deinit(struct ali *self);
 ali_err_t ali_set_value_u64(struct ali *self, uint64_t val);
 ali_err_t ali_set_value_u32(struct ali *self, uint32_t val);

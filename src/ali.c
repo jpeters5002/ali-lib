@@ -3,6 +3,10 @@
 
 #include <stdlib.h>
 
+void ali_init(struct ali *self) {
+    *self = ALI_INIT_LIST();
+}
+
 void ali_deinit(struct ali *self) {
     free(self->_number);
 }
