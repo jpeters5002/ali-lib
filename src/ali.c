@@ -29,7 +29,7 @@ void ali_deinit(struct ali *self) {
     self->_len = RATIO_PRIMITIVE_TO_SIZE_T_RU(type); \
     for (size_t i = 0; i < RATIO_PRIMITIVE_TO_SIZE_T_RU(type); i++) { \
         /* reverse index access; set to the value shifted properly and casted (potentially down) to a size_t */ \
-        self->_number[RATIO_PRIMITIVE_TO_SIZE_T_RU(type) - 1 - i] = (size_t) (val >> (8 * i * RATIO_PRIMITIVE_TO_SIZE_T_RU(type))); \
+        self->_number[RATIO_PRIMITIVE_TO_SIZE_T_RU(type) - 1 - i] = (size_t) (val >> (8 * i * sizeof(size_t))); \
     } \
     return eALI_ERR_NOERR; \
     /*}*/
