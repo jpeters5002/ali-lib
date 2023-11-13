@@ -51,3 +51,19 @@ ali_err_t ali_set_value_u8(struct ali *self, uint8_t val) {
     DEFINE_PRIMITIVE_ALI_SET_VALUE(uint8_t)
 }
 
+int my_atoi(const char* val) {
+    size_t len = strlen(val);
+    int num = 0;
+
+    for (size_t i = 0; i < len; i++) {
+        if (val[i] <= '9' && val[i] >= '0') {
+            num = (num * 10) + val[i] - '0';
+        }
+        else break;
+    }
+    return num;
+}
+
+ali_err_t ali_set_value_str(struct ali *self, const char* val) {
+/* FINISH LATER */
+}

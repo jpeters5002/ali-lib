@@ -19,4 +19,6 @@ ali_err_t ali_set_value_u32(struct ali *self, uint32_t val);
 ali_err_t ali_set_value_u16(struct ali *self, uint16_t val);
 ali_err_t ali_set_value_u8(struct ali *self, uint8_t val);
 
+ali_err_t ali_set_value_str(struct ali *self, const char* val);
+
 #endif // ALI_H
