@@ -46,7 +46,7 @@ $(OBJ)/%.o: $(SRC)/%.c
 
 clean:
 	$(RM) $(OBJECTS)
-	$(RM) $(OUTPUT)/$(DYNLIB)
+	$(RM) $(OUTPUT)/*
 
 $(LIB_INSTALL):
 	mkdir -p $@
@@ -60,3 +60,6 @@ install: $(LIB_INSTALL) $(INC_INSTALL) $(OUTPUT)/$(DYNLIB)
 
 uninstall:
 	$(RM_REC) $(LIB_INSTALL) $(INC_INSTALL)
+$(OUTPUT)/test_ali:
+	$(CC) test/test_ali.c -L/usr/local/lib/ali -lali -I/usr/local/include/ali -o $(OUTPUT)/test_ali
+test: $(OUTPUT)/test_ali
