@@ -20,5 +20,10 @@ ali_err_t ali_set_value_u16(struct ali *self, uint16_t val);
 ali_err_t ali_set_value_u8(struct ali *self, uint8_t val);
 
 ali_err_t ali_set_value_str(struct ali *self, const char* val);
+void ali_print(const struct ali * self);
+
+/* Arithmetic */
+
+ali_err_t ali_add(struct ali * dest, const struct ali * num1, const struct ali * num2);
 
 #endif // ALI_H

@@ -2,6 +2,7 @@
 #include "ali_err.h"
 
 #include <stdlib.h>
+#define SIZE_T_MAX ((size_t) - 1)
 
 void ali_init(struct ali *self) {
     *self = ALI_INIT_LIST();
@@ -66,4 +67,21 @@ int my_atoi(const char* val) {
 
 ali_err_t ali_set_value_str(struct ali *self, const char* val) {
 /* FINISH LATER */
+}
+
+void ali_print(const struct ali * self) {
+    char buf [256]; /* :( */
+}
+
+/* Arithmetic */
+
+ali_err_t ali_add(struct ali * dest, const struct ali * num1, const struct ali * num2) {
+    if (!dest || !num1 || !num1->_number || !num2 || !num2->_number)
+        return eALI_ERR_UNEXPECTEDNULL;
+    size_t max_size = (num1->_len < num2->_len) ? num2->_len : num1->_len;
+    for(size_t i = 0; i < max_size; i++) {
+        size_t num1_sect = 0;
+        size_t num2_sect = 0;
+        /* FINISH LATER */
+    }
 }
