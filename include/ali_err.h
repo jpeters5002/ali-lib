@@ -7,5 +7,7 @@ typedef enum ali_err_t {
     eALI_ERR_UNEXPECTEDNULL,
 } ali_err_t;
 
+const char *str_from_ali_err(ali_err_t value);
+
 #endif // ALI_ERR_H
 

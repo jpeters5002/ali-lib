@@ -1,8 +1,9 @@
 #include "ali.h"
 #include "ali_err.h"
 
+#include <stdbool.h>
+#include <string.h>
 #include <stdlib.h>
-#define SIZE_T_MAX ((size_t) - 1)
 
 void ali_init(struct ali *self) {
     *self = ALI_INIT_LIST();
@@ -78,10 +79,66 @@ void ali_print(const struct ali * self) {
 ali_err_t ali_add(struct ali * dest, const struct ali * num1, const struct ali * num2) {
     if (!dest || !num1 || !num1->_number || !num2 || !num2->_number)
         return eALI_ERR_UNEXPECTEDNULL;
-    size_t max_size = (num1->_len < num2->_len) ? num2->_len : num1->_len;
-    for(size_t i = 0; i < max_size; i++) {
-        size_t num1_sect = 0;
-        size_t num2_sect = 0;
-        /* FINISH LATER */
+    size_t max_len = (num1->_len < num2->_len) ? num2->_len : num1->_len;
+    const struct ali *nums[2] = {num1, num2};
+    struct ali dest_proxy;
+    struct ali *dest_proxy_ptr = dest;
+    for (size_t num_idx = 0; num_idx < 2; num_idx++) {
+        if (dest == nums[num_idx]) {
+            dest_proxy_ptr = &dest_proxy;
+            ali_init(dest_proxy_ptr);
+            break;
+        }
     }
+    // now 'dest_proxy_ptr' points to either the argument 'dest' or a local initialized ali
+    // and we test if 'dest_proxy_ptr' is not 'dest' to know if we need to copy 'dest_proxy' into 'dest'
+    free(dest_proxy_ptr->_number);
+    dest_proxy_ptr->_number = malloc(sizeof(size_t) * max_len);
+    if (!dest_proxy_ptr->_number) {
+        return eALI_ERR_ALLOCFAIL;
+    }
+    dest_proxy_ptr->_len = max_len;
+    size_t overflow = 0;
+    for(size_t i = 0; i < max_len; i++) {
+        size_t num_sections[2] = {0, 0};
+        for (size_t num_idx = 0; num_idx < 2; num_idx++) {
+            if (i < nums[num_idx]->_len) {
+                num_sections[num_idx] = nums[num_idx]->_number[nums[num_idx]->_len - i - 1];
+            }
+        }
+        size_t *result_section = &(dest_proxy_ptr->_number[dest_proxy_ptr->_len - i - 1]);
+        if (num_sections[0] > SIZE_MAX - num_sections[1]) {
+            // overflow will occur (both numbers > 0 is guaranteed)
+            *result_section = (SIZE_MAX - num_sections[1]) + num_sections[0] - 1 + overflow;
+            overflow = 1;
+        } else {
+            // no overflow
+            *result_section = num_sections[0] + num_sections[1] + overflow;
+            overflow = 0;
+        }
+    }
+    // apply overflow
+    if (overflow != 0) {
+        size_t *tmp = realloc(dest_proxy_ptr->_number, sizeof(size_t) * (max_len + 1));
+        if (!tmp) {
+            ali_deinit(dest_proxy_ptr);
+            return eALI_ERR_ALLOCFAIL;
+        }
+        dest_proxy_ptr->_number = tmp;
+        dest_proxy_ptr->_len = max_len + 1;
+        memmove(dest_proxy_ptr->_number + 1, dest_proxy_ptr->_number, (dest_proxy_ptr->_len - 1) * sizeof(size_t));
+        dest_proxy_ptr->_number[0] = overflow;
+    }
+    // apply proxy
+    if (dest_proxy_ptr != dest) {
+        free(dest->_number);
+        dest->_number = malloc(sizeof(size_t) * dest_proxy_ptr->_len);
+        if (!dest->_number) {
+            return eALI_ERR_ALLOCFAIL;
+        }
+        dest->_len = dest_proxy_ptr->_len;
+        memcpy(dest->_number, dest_proxy_ptr->_number, dest->_len * sizeof(size_t));
+        ali_deinit(dest_proxy_ptr);
+    }
+    return eALI_ERR_NOERR;
 }

@@ -10,7 +10,7 @@ OUTPUT = build
 OBJ = obj
 SRC = src
 INC = include
-LIB_INSTALL = /usr/local/lib/ali
+LIB_INSTALL = /usr/local/lib
 INC_INSTALL = /usr/local/include/ali
 
 # commands
@@ -60,6 +60,6 @@ install: $(LIB_INSTALL) $(INC_INSTALL) $(OUTPUT)/$(DYNLIB)
 
 uninstall:
 	$(RM_REC) $(LIB_INSTALL) $(INC_INSTALL)
-$(OUTPUT)/test_ali:
+$(OUTPUT)/test_ali: test/test_ali.c $(HEADERS)
 	$(CC) test/test_ali.c -L/usr/local/lib/ali -lali -I/usr/local/include/ali -o $(OUTPUT)/test_ali
 test: $(OUTPUT)/test_ali
