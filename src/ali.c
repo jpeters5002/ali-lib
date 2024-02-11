@@ -142,3 +142,45 @@ ali_err_t ali_add(struct ali * dest, const struct ali * num1, const struct ali *
     }
     return eALI_ERR_NOERR;
 }
+
+ali_err_t ali_mult (struct ali * dest, const struct ali * num1, const struct ali * num2) {
+    if (!dest || !num1 || !num1->_number || !num2 || !num2->_number)
+        return eALI_ERR_UNEXPECTEDNULL;
+    size_t max_dest_len = num1->_len + num2->_len;
+    const struct ali * nums[2] = {num1, num2};
+    struct ali * proxy = dest;
+    //TODO: Add proxy
+
+    free(proxy->_number);
+    proxy->_number = malloc(sizeof(size_t) * max_dest_len);
+    if (!proxy->_number)
+        return eALI_ERR_ALLOCFAIL;
+    proxy->_len = max_dest_len;
+    //Half section index (weird)
+    for (size_t hsi1 = 0; hsi1 < num1->_len * 2; hsi1++) {
+        for (size_t hsi2 = 0; hsi2 < num2->_len * 2; hsi2++) {
+            size_t whichhalf[2] = {hsi1 % 2, hsi2 % 2};
+            size_t fsi[2] = {hsi1 / 2, hsi2 / 2};
+
+            size_t hs_num[2];
+            for (size_t num_idx = 0; num_idx < 2; num_idx++) {
+                hs_num[num_idx] = nums[num_idx]->_number[nums[num_idx]->_len - fsi[num_idx] - 1];
+                if (whichhalf[num_idx] == 0) {
+                    hs_num[num_idx] &=0xffffffff;
+                } else {
+                    hs_num[num_idx] >>= 4 * 8;
+                }
+            }
+            size_t hsi_dest = hsi1 + hsi2;
+            size_t result = hs_num[0] * hs_num[1];
+            if (hsi_dest % 2 == 0) {
+                //TODO: Make the following function
+                _ali_add_into_index(proxy, result, hsi_dest / 2);
+            } else {
+                _ali_add_into_index(proxy, result& 0xffffffff, hsi_dest / 2);
+                _ali_add_into_index(proxy, result >> 4 * 8, (hsi_dest / 2) + 1);
+            }
+            //TODO: Write the rest of the frickin' function
+        }
+    }
+}

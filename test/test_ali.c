@@ -19,6 +19,9 @@ int main() {
     ENSURE(result == eALI_ERR_NOERR, "ali_add returned error code: %s", str_from_ali_err(result));
     ENSURE(add_foos[0]._len == 2, "after adding 1 and SIZE_MAX (should overflow by 1), resulting length was not 2 (resulting length: %lu)", add_foos[0]._len);
     ENSURE(add_foos[0]._number[0] == 1 && add_foos[1]._number[1] == 0, "result of adding 1 and SIZE_MAX is not the expected value");
+    for (size_t i = 0; i < 3; i++) {
+        ali_deinit(&add_foos[i]);
+    }
 
     printf("TESTS SUCCEEDED\n");
     return 0;
