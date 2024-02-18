@@ -5,6 +5,7 @@ typedef enum ali_err_t {
     eALI_ERR_NOERR = 0,
     eALI_ERR_ALLOCFAIL = -1000,
     eALI_ERR_UNEXPECTEDNULL,
+    eALI_ERR_DIVBYZERO,
     eALI_ERR_UNKNOWNERR,
 } ali_err_t;
 

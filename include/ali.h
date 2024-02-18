@@ -26,5 +26,6 @@ void ali_print(const struct ali * self);
 
 ali_err_t ali_add(struct ali * dest, const struct ali * num1, const struct ali * num2);
 ali_err_t ali_mult(struct ali * dest, const struct ali * num1, const struct ali * num2);
+ali_err_t ali_div_size(struct ali * dest_div, size_t *dest_mod, const struct ali * numerator, const size_t denominator);
 
 #endif // ALI_H

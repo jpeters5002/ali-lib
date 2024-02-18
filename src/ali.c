@@ -10,6 +10,9 @@
 #define _STRINGIFY(x) #x
 #define STRINGIFY(x) _STRINGIFY(x)
 
+#define RET_IF_ERR(result) \
+    if (result != eALI_ERR_NOERR) return result
+
 // ============================
 // private functions
 // ============================
@@ -222,7 +225,7 @@ ali_err_t ali_mult (struct ali * dest, const struct ali * num1, const struct ali
     }
     // 'proxy' is either the argument 'dest' or points to the local initialized ali 'alternate'
     free(proxy->_number);
-    proxy->_number = malloc(sizeof(size_t) * max_dest_len);
+    proxy->_number = calloc(sizeof(size_t) * max_dest_len, 0);
     if (!proxy->_number)
         return eALI_ERR_ALLOCFAIL;
     proxy->_len = max_dest_len;
@@ -277,3 +280,84 @@ ali_err_t ali_mult (struct ali * dest, const struct ali * num1, const struct ali
     ali_err_t subresult = _apply_proxy(proxy, dest);
     return subresult;
 }
+
+ali_err_t ali_div_size(struct ali * dest_div, size_t *dest_mod, const struct ali * numerator, const size_t denominator) {
+    if (!dest || !numerator || !numerator->_number) {
+        return eALI_ERR_UNEXPECTEDNULL;
+    }
+    if (denominator == 0) {
+        return eALI_ERR_DIVBYZERO;
+    }
+    ali_err_t subresult;
+    if (numerator->_len == 1 && numerator->_number[0] == 0) {
+        // numerator is zero
+        free(dest->_number);
+        dest->_number = calloc(1 * sizeof(size_t), 0);
+        if (!dest->_number) {
+            return eALI_ERR_ALLOCFAIL;
+        }
+        dest->_len = 1;
+        return eALI_ERR_NOERR;
+    }
+    struct ali *proxy = dest;
+    // TODO: do the rest of proxy setup
+    free(proxy->_number);
+    proxy->_number = calloc(sizeof(size_t) * numerator->_len, 0);
+    if (!proxy->_number) {
+        return eALI_ERR_ALLOCFAIL;
+    }
+    proxy->_len = numerator->_len;
+    struct ali product, a_den, a_lb, a_pacs; // denominator, lower_bound, previous_and_current_section
+    ali_init(&product);
+    ali_init(&a_den);
+    ali_init(&a_lb);
+    ali_init(&a_pacs);
+    subresult = ali_set_value_u64(&a_den, denominator);
+    RET_ON_ERR(subresult); // TODO: we should deinit everything instead of just returning
+    size_t section_div_remainder = 0;
+    for (size_t numerator_idx = 0; numerator_idx < numerator->_len; numerator_idx++) {
+        size_t *result_section = proxy->_number[numerator_idx];
+        const size_t numerator_section_number = numerator->_number[numerator_idx];
+        if (section_div_remainder == 0) {
+            *result_section = numerator_section_number / denominator;
+            section_div_remainder = numerator_section_number % denominator;
+        } else {
+            a_pacs._number = malloc(sizeof(size_t) * 2);
+            if (!a_pacs._number) {
+                return eALI_ERR_ALLOCFAIL;
+            }
+            a_pacs._len = 2;
+            a_pacs._number[0] = section_div_remainder;
+            a_pacs._number[1] = numerator_section_number;
+            subresult = ali_set_value_u64(&a_lb, numerator_section_number / denominator);
+            RET_ON_ERR(subresult);
+            while (1) {
+                // TODO: create function ali_add_size
+                ali_add_size(&a_lb, &a_lb, 1);
+                subresult = ali_mult(&product, &a_lb, &a_pacs);
+                RET_ON_ERR(subresult);
+                // check if product >= a_pacs
+                int cmp = ali_cmp(&a_pacs, &a_lb); // TODO: write this function that compares two ali objects
+                switch (cmp) {
+                    case -1: // TODO: make sure this means that a_pacs < a_lb
+                        *result_section = a_lb._number[0] - 1;
+                        section_div_remainder = _ali_absdiff_expect_size(&a_lb, &a_pacs); // TODO: write function
+                        goto break_while_loop;
+                    case 0:
+                        *result_section = a_lb._number[0];
+                        section_div_remainder = 0;
+                        goto break_while_loop;
+                    default:
+                        break;
+                }
+            }
+            break_while_loop:
+        }
+    }
+    if (dest_mod) {
+        *dest_mod = section_div_remainder;
+    }
+    _apply_proxy(); // help
+    return eALI_ERR_NOERR;
+}
+
