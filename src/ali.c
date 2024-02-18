@@ -4,7 +4,69 @@
 #include <stdbool.h>
 #include <string.h>
 #include <stdlib.h>
+#include <assert.h>
 
+// stupid macro crap
+#define _STRINGIFY(x) #x
+#define STRINGIFY(x) _STRINGIFY(x)
+
+// ============================
+// private functions
+// ============================
+bool _does_overflow_on_add(size_t l, size_t r) {
+    return l > SIZE_MAX - r;
+}
+
+struct oa_t { size_t result; size_t overflow; };
+struct oa_t _overflow_add(size_t l, size_t r) {
+    struct oa_t oa;
+    if (_does_overflow_on_add(l, r)) {
+        oa.result = (SIZE_MAX - l) + r - 1;
+        oa.overflow = 1;
+    } else {
+        oa.result = l + r;
+        oa.overflow = 0;
+    }
+    return oa;
+}
+
+ali_err_t _ali_add_into_index(struct ali *dest, size_t addend, size_t index) {
+    struct oa_t oa = {0, 0};
+    size_t overflow_first_addition;
+    for (size_t i = index; i < dest->_len; i++) {
+        size_t *section = &(dest->_number[dest->_len - 1 - i]);
+        oa = _overflow_add(addend, oa.overflow);
+        overflow_first_addition = oa.overflow;
+        oa = _overflow_add(*section, oa.result);
+        *section = oa.result;
+        if (overflow_first_addition || oa.overflow) {
+            oa.overflow = 1;
+            addend = 0;
+        } else {
+            return eALI_ERR_NOERR;
+        }
+    }
+    assert(!"Unreachable statement -- file ali.c; line " STRINGIFY(__LINE__));
+    return eALI_ERR_UNKNOWNERR;
+}
+
+ali_err_t _apply_proxy(struct ali *proxy, struct ali *dest) {
+    if (proxy != dest) {
+        free(dest->_number);
+        dest->_number = malloc(sizeof(size_t) * proxy->_len);
+        if (!dest->_number) {
+            return eALI_ERR_ALLOCFAIL;
+        }
+        dest->_len = proxy->_len;
+        memcpy(dest->_number, proxy->_number, dest->_len * sizeof(size_t));
+        ali_deinit(proxy);
+    }
+    return eALI_ERR_NOERR;
+}
+
+// ============================
+// public functions
+// ============================
 void ali_init(struct ali *self) {
     *self = ALI_INIT_LIST();
 }
@@ -107,6 +169,7 @@ ali_err_t ali_add(struct ali * dest, const struct ali * num1, const struct ali *
             }
         }
         size_t *result_section = &(dest_proxy_ptr->_number[dest_proxy_ptr->_len - i - 1]);
+        // TODO: this check doesn't account for the 'overflow' variable
         if (num_sections[0] > SIZE_MAX - num_sections[1]) {
             // overflow will occur (both numbers > 0 is guaranteed)
             *result_section = (SIZE_MAX - num_sections[1]) + num_sections[0] - 1 + overflow;
@@ -148,9 +211,16 @@ ali_err_t ali_mult (struct ali * dest, const struct ali * num1, const struct ali
         return eALI_ERR_UNEXPECTEDNULL;
     size_t max_dest_len = num1->_len + num2->_len;
     const struct ali * nums[2] = {num1, num2};
-    struct ali * proxy = dest;
-    //TODO: Add proxy
-
+    struct ali alternate;
+    struct ali *proxy = dest;
+    for (size_t num_idx = 0; num_idx < 2; num_idx++) {
+        if (dest == nums[num_idx]) {
+            proxy = &alternate;
+            ali_init(proxy);
+            break;
+        }
+    }
+    // 'proxy' is either the argument 'dest' or points to the local initialized ali 'alternate'
     free(proxy->_number);
     proxy->_number = malloc(sizeof(size_t) * max_dest_len);
     if (!proxy->_number)
@@ -159,10 +229,10 @@ ali_err_t ali_mult (struct ali * dest, const struct ali * num1, const struct ali
     //Half section index (weird)
     for (size_t hsi1 = 0; hsi1 < num1->_len * 2; hsi1++) {
         for (size_t hsi2 = 0; hsi2 < num2->_len * 2; hsi2++) {
-            size_t whichhalf[2] = {hsi1 % 2, hsi2 % 2};
-            size_t fsi[2] = {hsi1 / 2, hsi2 / 2};
+            size_t whichhalf[2] = {hsi1 % 2, hsi2 % 2}; // 0 is right half, 1 is left half -- indexed by num_idx
+            size_t fsi[2] = {hsi1 / 2, hsi2 / 2}; // full section index -- indexed by num_idx
 
-            size_t hs_num[2];
+            size_t hs_num[2]; // half section num -- indexed by num_idx
             for (size_t num_idx = 0; num_idx < 2; num_idx++) {
                 hs_num[num_idx] = nums[num_idx]->_number[nums[num_idx]->_len - fsi[num_idx] - 1];
                 if (whichhalf[num_idx] == 0) {
@@ -180,7 +250,30 @@ ali_err_t ali_mult (struct ali * dest, const struct ali * num1, const struct ali
                 _ali_add_into_index(proxy, result& 0xffffffff, hsi_dest / 2);
                 _ali_add_into_index(proxy, result >> 4 * 8, (hsi_dest / 2) + 1);
             }
-            //TODO: Write the rest of the frickin' function
         }
     }
+    // clamp allocated space
+    size_t zero_count = 0;
+    for (size_t i = 0; i < proxy->_len; i++) {
+        if (proxy->_number[i] == 0) {
+            zero_count++;
+        } else {
+            break;
+        }
+    }
+    if (zero_count > 0) {
+        // TODO: make sure this doesn't cause problems with one of the ali's being 0
+        // (maybe we can check each for zero earlier in the function)
+        memmove(proxy->_number, proxy->_number + zero_count, (proxy->_len - zero_count) * sizeof(size_t));
+        void *tmp = realloc(proxy->_number, (proxy->_len - zero_count) * sizeof(size_t));
+        if (!tmp) {
+            // TODO: I think there may need to be more cleanup here
+            return eALI_ERR_ALLOCFAIL;
+        }
+        proxy->_number = tmp;
+        proxy->_len -= zero_count;
+    }
+
+    ali_err_t subresult = _apply_proxy(proxy, dest);
+    return subresult;
 }

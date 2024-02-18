@@ -25,5 +25,6 @@ void ali_print(const struct ali * self);
 /* Arithmetic */
 
 ali_err_t ali_add(struct ali * dest, const struct ali * num1, const struct ali * num2);
+ali_err_t ali_mult(struct ali * dest, const struct ali * num1, const struct ali * num2);
 
 #endif // ALI_H
