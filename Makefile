@@ -60,6 +60,6 @@ install: $(LIB_INSTALL) $(INC_INSTALL) $(OUTPUT)/$(DYNLIB)
 
 uninstall:
 	$(RM_REC) $(LIB_INSTALL) $(INC_INSTALL)
-$(OUTPUT)/test_ali: test/test_ali.c $(HEADERS)
-	$(CC) test/test_ali.c -L/usr/local/lib/ali -lali -I/usr/local/include/ali -o $(OUTPUT)/test_ali
+$(OUTPUT)/test_ali: test/test_ali.c $(HEADERS) $(OUTPUT)/$(DYNLIB)
+	$(CC) $(CFLAGS) test/test_ali.c -L/usr/local/lib/ali -lali -I/usr/local/include/ali -o $(OUTPUT)/test_ali
 test: $(OUTPUT)/test_ali

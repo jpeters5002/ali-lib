@@ -34,6 +34,7 @@ struct oa_t _overflow_add(size_t l, size_t r) {
 }
 
 ali_err_t _ali_add_into_index(struct ali *dest, size_t addend, size_t index) {
+    assert(dest->_len > index);
     struct oa_t oa = {0, 0};
     size_t overflow_first_addition;
     for (size_t i = index; i < dest->_len; i++) {
@@ -65,6 +66,11 @@ ali_err_t _apply_proxy(struct ali *proxy, struct ali *dest) {
         ali_deinit(proxy);
     }
     return eALI_ERR_NOERR;
+}
+
+size_t _ali_absdiff_expect_size(const struct ali * num1, const struct ali * num2)
+{
+    // TODO: implement
 }
 
 // ============================
@@ -106,7 +112,27 @@ void ali_deinit(struct ali *self) {
     /*}*/
 
 ali_err_t ali_set_value_u64(struct ali *self, uint64_t val) {
-    DEFINE_PRIMITIVE_ALI_SET_VALUE(uint64_t)
+//    DEFINE_PRIMITIVE_ALI_SET_VALUE(uint64_t)
+    if (self->_number == NULL) {
+        self->_number = malloc(sizeof(size_t) * RATIO_PRIMITIVE_TO_SIZE_T_RU(uint64_t));
+        if (self->_number == NULL) {
+            /* malloc fail */
+            return eALI_ERR_ALLOCFAIL;
+        }
+    } else if (self->_len != RATIO_PRIMITIVE_TO_SIZE_T_RU(uint64_t)) {
+        void *tmp = realloc(self->_number, sizeof(size_t) * RATIO_PRIMITIVE_TO_SIZE_T_RU(uint64_t));
+        if (tmp == NULL) {
+            /* realloc fail */
+            return eALI_ERR_ALLOCFAIL;
+        }
+        self->_number = tmp;
+    }
+    self->_len = RATIO_PRIMITIVE_TO_SIZE_T_RU(uint64_t);
+    for (size_t i = 0; i < RATIO_PRIMITIVE_TO_SIZE_T_RU(uint64_t); i++) {
+        /* reverse index access; set to the value shifted properly and casted (potentially down) to a size_t */
+        self->_number[RATIO_PRIMITIVE_TO_SIZE_T_RU(uint64_t) - 1 - i] = (size_t) (val >> (8 * i * sizeof(size_t)));
+    }
+    return eALI_ERR_NOERR;
 }
 ali_err_t ali_set_value_u32(struct ali *self, uint32_t val) {
     DEFINE_PRIMITIVE_ALI_SET_VALUE(uint32_t)
@@ -139,7 +165,9 @@ void ali_print(const struct ali * self) {
     char buf [256]; /* :( */
 }
 
-/* Arithmetic */
+// ============================
+// Arithmetic
+// ============================
 
 ali_err_t ali_add(struct ali * dest, const struct ali * num1, const struct ali * num2) {
     if (!dest || !num1 || !num1->_number || !num2 || !num2->_number)
@@ -175,7 +203,7 @@ ali_err_t ali_add(struct ali * dest, const struct ali * num1, const struct ali *
         // TODO: this check doesn't account for the 'overflow' variable
         if (num_sections[0] > SIZE_MAX - num_sections[1]) {
             // overflow will occur (both numbers > 0 is guaranteed)
-            *result_section = (SIZE_MAX - num_sections[1]) + num_sections[0] - 1 + overflow;
+            *result_section = (SIZE_MAX - num_sections[0]) + num_sections[1] - 1 + overflow;
             overflow = 1;
         } else {
             // no overflow
@@ -207,6 +235,11 @@ ali_err_t ali_add(struct ali * dest, const struct ali * num1, const struct ali *
         ali_deinit(dest_proxy_ptr);
     }
     return eALI_ERR_NOERR;
+}
+
+ali_err_t ali_add_size(struct ali * dest, const struct ali * num1, size_t num2)
+{
+    // TODO: implement
 }
 
 ali_err_t ali_mult (struct ali * dest, const struct ali * num1, const struct ali * num2) {
@@ -268,13 +301,28 @@ ali_err_t ali_mult (struct ali * dest, const struct ali * num1, const struct ali
         // TODO: make sure this doesn't cause problems with one of the ali's being 0
         // (maybe we can check each for zero earlier in the function)
         memmove(proxy->_number, proxy->_number + zero_count, (proxy->_len - zero_count) * sizeof(size_t));
-        void *tmp = realloc(proxy->_number, (proxy->_len - zero_count) * sizeof(size_t));
-        if (!tmp) {
-            // TODO: I think there may need to be more cleanup here
-            return eALI_ERR_ALLOCFAIL;
+        size_t new_len = proxy->_len - zero_count;
+        if (new_len == 0) {
+            void *tmp = realloc(proxy->_number, 1 * sizeof(size_t));
+            if (!tmp) {
+                goto zero_count_bad_alloc;
+            }
+            proxy->_number = tmp;
+            proxy->_len = 1;
+            proxy->_number[0] = 0;
+        } else {
+            void *tmp = realloc(proxy->_number, new_len * sizeof(size_t));
+            if (!tmp) {
+                goto zero_count_bad_alloc;
+            }
+            proxy->_number = tmp;
+            proxy->_len = new_len;
         }
-        proxy->_number = tmp;
-        proxy->_len -= zero_count;
+        goto zero_count_no_bad_alloc;
+        zero_count_bad_alloc:
+        // TODO: I think there may need to be more cleanup here
+        return eALI_ERR_ALLOCFAIL;
+        zero_count_no_bad_alloc: do {} while (0);
     }
 
     ali_err_t subresult = _apply_proxy(proxy, dest);
@@ -282,7 +330,7 @@ ali_err_t ali_mult (struct ali * dest, const struct ali * num1, const struct ali
 }
 
 ali_err_t ali_div_size(struct ali * dest_div, size_t *dest_mod, const struct ali * numerator, const size_t denominator) {
-    if (!dest || !numerator || !numerator->_number) {
+    if ((!dest_div && !dest_mod) || !numerator || !numerator->_number) {
         return eALI_ERR_UNEXPECTEDNULL;
     }
     if (denominator == 0) {
@@ -291,15 +339,15 @@ ali_err_t ali_div_size(struct ali * dest_div, size_t *dest_mod, const struct ali
     ali_err_t subresult;
     if (numerator->_len == 1 && numerator->_number[0] == 0) {
         // numerator is zero
-        free(dest->_number);
-        dest->_number = calloc(1 * sizeof(size_t), 0);
-        if (!dest->_number) {
+        free(dest_div->_number);
+        dest_div->_number = calloc(1 * sizeof(size_t), 0);
+        if (!dest_div->_number) {
             return eALI_ERR_ALLOCFAIL;
         }
-        dest->_len = 1;
+        dest_div->_len = 1;
         return eALI_ERR_NOERR;
     }
-    struct ali *proxy = dest;
+    struct ali *proxy = dest_div;
     // TODO: do the rest of proxy setup
     free(proxy->_number);
     proxy->_number = calloc(sizeof(size_t) * numerator->_len, 0);
@@ -313,10 +361,10 @@ ali_err_t ali_div_size(struct ali * dest_div, size_t *dest_mod, const struct ali
     ali_init(&a_lb);
     ali_init(&a_pacs);
     subresult = ali_set_value_u64(&a_den, denominator);
-    RET_ON_ERR(subresult); // TODO: we should deinit everything instead of just returning
+    RET_IF_ERR(subresult); // TODO: we should deinit everything instead of just returning
     size_t section_div_remainder = 0;
     for (size_t numerator_idx = 0; numerator_idx < numerator->_len; numerator_idx++) {
-        size_t *result_section = proxy->_number[numerator_idx];
+        size_t *result_section = proxy->_number + numerator_idx;
         const size_t numerator_section_number = numerator->_number[numerator_idx];
         if (section_div_remainder == 0) {
             *result_section = numerator_section_number / denominator;
@@ -330,14 +378,16 @@ ali_err_t ali_div_size(struct ali * dest_div, size_t *dest_mod, const struct ali
             a_pacs._number[0] = section_div_remainder;
             a_pacs._number[1] = numerator_section_number;
             subresult = ali_set_value_u64(&a_lb, numerator_section_number / denominator);
-            RET_ON_ERR(subresult);
+            RET_IF_ERR(subresult);
             while (1) {
                 // TODO: create function ali_add_size
                 ali_add_size(&a_lb, &a_lb, 1);
                 subresult = ali_mult(&product, &a_lb, &a_pacs);
-                RET_ON_ERR(subresult);
+                RET_IF_ERR(subresult);
                 // check if product >= a_pacs
-                int cmp = ali_cmp(&a_pacs, &a_lb); // TODO: write this function that compares two ali objects
+                int cmp;
+                subresult = ali_cmp(&cmp, &a_pacs, &a_lb);
+                RET_IF_ERR(subresult);
                 switch (cmp) {
                     case -1: // TODO: make sure this means that a_pacs < a_lb
                         *result_section = a_lb._number[0] - 1;
@@ -351,13 +401,21 @@ ali_err_t ali_div_size(struct ali * dest_div, size_t *dest_mod, const struct ali
                         break;
                 }
             }
-            break_while_loop:
+            break_while_loop: do {} while (0);
         }
     }
     if (dest_mod) {
         *dest_mod = section_div_remainder;
     }
-    _apply_proxy(); // help
+    //_apply_proxy(); // help
     return eALI_ERR_NOERR;
 }
 
+// ============================
+// Other Operations
+// ============================
+
+ali_err_t ali_cmp(int * result, const struct ali * l, const struct ali * r)
+{
+    // TODO: implement
+}

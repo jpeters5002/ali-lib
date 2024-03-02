@@ -25,7 +25,13 @@ void ali_print(const struct ali * self);
 /* Arithmetic */
 
 ali_err_t ali_add(struct ali * dest, const struct ali * num1, const struct ali * num2);
+ali_err_t ali_add_size(struct ali * dest, const struct ali * num1, size_t num2);
 ali_err_t ali_mult(struct ali * dest, const struct ali * num1, const struct ali * num2);
 ali_err_t ali_div_size(struct ali * dest_div, size_t *dest_mod, const struct ali * numerator, const size_t denominator);
+
+/* Other Operations */
+
+/// inserts -1, 0, 1 into 'result' if 'l' is less, equal, greater than/to 'r', respectively
+ali_err_t ali_cmp(int * result, const struct ali * l, const struct ali * r);
 
 #endif // ALI_H
