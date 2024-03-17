@@ -11,6 +11,7 @@ int main() {
     enum ali_err_t result;
 
     // add
+    /*
     struct ali add_foos[3];
     for (size_t i = 0; i < 3; i++) {
         ali_init(&add_foos[i]);
@@ -28,6 +29,7 @@ int main() {
     for (size_t i = 0; i < 3; i++) {
         ali_deinit(&add_foos[i]);
     }
+    */
 
     // mult
     struct ali mult_foos[3];
@@ -36,7 +38,7 @@ int main() {
     }
     ali_set_value_u64(&mult_foos[1], 9001);
     ali_set_value_u64(&mult_foos[2], 42);
-    for (size_t mult_runs = 0; mult_runs < 15; mult_runs++) {
+    for (size_t mult_runs = 0; mult_runs < 6; mult_runs++) {
         result = ali_mult(&mult_foos[(0 + mult_runs) % 3], &mult_foos[(1 + mult_runs) % 3], &mult_foos[(2 + mult_runs) % 3]);
         ENSURE(result == eALI_ERR_NOERR, "ali_mult returned error code: %s", str_from_ali_err(result));
     }

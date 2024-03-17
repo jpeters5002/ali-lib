@@ -283,8 +283,8 @@ ali_err_t ali_mult (struct ali * dest, const struct ali * num1, const struct ali
                 //TODO: Make the following function
                 _ali_add_into_index(proxy, result, hsi_dest / 2);
             } else {
-                _ali_add_into_index(proxy, result& 0xffffffff, hsi_dest / 2);
-                _ali_add_into_index(proxy, result >> 4 * 8, (hsi_dest / 2) + 1);
+                _ali_add_into_index(proxy, result << (4 * 8), hsi_dest / 2);
+                _ali_add_into_index(proxy, result >> (4 * 8), (hsi_dest / 2) + 1);
             }
         }
     }
